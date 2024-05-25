@@ -1,0 +1,32 @@
+---
+# This playbook creates a EC2 server with public IP address and DNS record
+# ansible-playbook -i ansible_hosts_gce aws-ec2.yml
+- hosts: local
+  gather_facts: False
+  vars:
+    ansible_python_interpreter: /usr/local/bin/python3
+    domain_name: ansible.aws.alex-sc.com
+
+  tasks:
+    - name: Create an instance with a public IP address
+      amazon.aws.ec2_instance:
+        name: "{{ domain_name }}"
+        region: us-east-1
+        key_name: alex-sc-aws-test
+        instance_type: t2.nano
+        security_group: launch-wizard-1
+        network:
+          assign_public_ip: true
+        image_id: ami-0bb84b8ffd87024d8
+        wait: true
+      register: "ec2"
+
+    - name: Add an A record
+      amazon.aws.route53:
+        state: present
+        zone: aws.alex-sc.com
+        record: "{{ domain_name }}"
+        type: A
+        ttl: 7200
+        value: "{{ ec2.instances[0].network_interfaces[0].association.public_ip }}"
+        wait: true
