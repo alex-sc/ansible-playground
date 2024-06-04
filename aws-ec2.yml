@@ -4,6 +4,7 @@
 - hosts: local
   gather_facts: False
   vars:
+    # You may need to remove or adjust this line
     ansible_python_interpreter: /usr/local/bin/python3
     domain_name: ansible.aws.alex-sc.com
 
@@ -29,4 +30,5 @@
         type: A
         ttl: 7200
         value: "{{ ec2.instances[0].network_interfaces[0].association.public_ip }}"
+        overwrite: true
         wait: true

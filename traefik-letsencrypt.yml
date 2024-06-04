@@ -1,0 +1,43 @@
+---
+# This playbook configures a let's encrypt certificate using Traefic
+# ansible-galaxy collection install community.docker (if needed)
+# ansible-playbook -i "ansible.aws.alex-sc.com," traefik-letsencrypt.yml
+- hosts: all
+  become: yes
+  become_user: root
+  vars:
+    domain_name: "{{ inventory_hostname }}"
+    acme_email: "your_email"
+
+  tasks:
+    - name: Install Docker
+      yum:
+        name:
+          - docker
+
+    - name: Enable and start Docker
+      service: name=docker enabled=yes state=started
+
+    - name: Create /usr/local/lib/docker/cli-plugins/
+      file: path=/usr/local/lib/docker/cli-plugins/ state=directory
+
+    - name: Download Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64
+        dest: /usr/local/lib/docker/cli-plugins/docker-compose
+
+    - name: Change permissions of /usr/local/bin/docker-compose, adding "+x"
+      file:
+        dest="{{ item }}"
+        mode=+x
+      loop:
+        - /usr/local/lib/docker/cli-plugins/docker-compose
+
+    - name: Copy Traefik Docker Compose file
+      template: src={{item.src}} dest={{item.dest}}
+      with_items:
+        - { src: 'traefik-docker-compose.yml', dest: '/root/docker-compose.yml' }
+
+    - name: Start Traefik
+      community.docker.docker_compose_v2:
+        project_src: /root/
