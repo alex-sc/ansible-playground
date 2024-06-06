@@ -1,0 +1,33 @@
+---
+# This playbook configures a self-signed TLS certificate for Nginx listening on a bare IP address
+# ansible-playbook -i "ansible.aws.alex-sc.com," nginx-https-ip-address.yml
+- hosts: all
+  become: yes
+  become_user: root
+  vars:
+    public_ip: "3.238.190.49"#"{{ ansible_default_ipv4.address }}"
+    domain_name: "{{ public_ip }}"
+
+  tasks:
+    - debug: var=public_ip
+
+    - name: Install required software
+      yum:
+        name:
+          - nginx
+          - openssl
+
+    - name: Create /etc/nginx/ssl
+      file: path=/etc/nginx/ssl state=directory
+
+    - name: Copy configuration files
+      template: src={{item.src}} dest={{item.dest}}
+      with_items:
+        - { src: 'nginx-https-ip.conf', dest: '/etc/nginx/conf.d/server.conf' }
+        - { src: 'tls_san.cnf', dest: '/etc/nginx/ssl/tls_san.cnf' }
+
+    - name: Generate self-signed TLS certificate
+      shell: "openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/key.pem -out /etc/nginx/ssl/cert.pem -config /etc/nginx/ssl/tls_san.cnf"
+
+    - name: Enable and start Nginx
+      service: name=nginx enabled=yes state=restarted
